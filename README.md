@@ -6,6 +6,9 @@
 ![PySide6](https://img.shields.io/badge/PySide6-6.6+-green)
 ![FFmpeg](https://img.shields.io/badge/FFmpeg-required-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
+![Windows](https://img.shields.io/badge/Platform-Windows-blue)
+[![Download](https://img.shields.io/github/v/release/zhanglingfei112/ffmpeg-gui?label=Download)](https://github.com/zhanglingfei112/ffmpeg-gui/releases/latest)
+[![Build](https://github.com/zhanglingfei112/ffmpeg-gui/actions/workflows/build-windows.yml/badge.svg)](https://github.com/zhanglingfei112/ffmpeg-gui/actions)
 
 ## ✨ 功能
 
@@ -25,7 +28,7 @@
 ## 📥 安装
 
 ### 从 Release 下载（推荐）
-前往 [Releases](https://github.com/lfz/ffmpeg-gui/releases) 下载最新版 `FFmpegGUI-Windows.zip`，解压运行即可。
+前往 [Releases](https://github.com/zhanglingfei112/ffmpeg-gui/releases) 下载最新版 `FFmpegGUI-Windows.zip`，解压运行即可。
 
 > ⚠️ 使用前需安装 FFmpeg：https://ffmpeg.org/download.html
 > 或通过 winget 安装：`winget install FFmpeg`
@@ -34,7 +37,7 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/lfz/ffmpeg-gui.git
+git clone https://github.com/zhanglingfei112/ffmpeg-gui.git
 cd ffmpeg-gui
 
 # 2. 安装依赖
