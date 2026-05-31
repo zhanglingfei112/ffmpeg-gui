@@ -1,0 +1,56 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --clean --noconfirm `
+            --name "FFmpegGUI" `
+            --windowed `
+            --add-data "src;src" `
+            --hidden-import PySide6.QtCore `
+            --hidden-import PySide6.QtWidgets `
+            --hidden-import PySide6.QtGui `
+            src/main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FFmpegGUI-Windows
+          path: dist/FFmpegGUI/
+          if-no-files-found: error
+
+      - name: Create release zip (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          Compress-Archive -Path dist/FFmpegGUI/* -DestinationPath FFmpegGUI-${{ github.ref_name }}.zip
+
+      - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: FFmpegGUI-${{ github.ref_name }}-release
+          path: FFmpegGUI-${{ github.ref_name }}.zip
