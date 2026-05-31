@@ -5,6 +5,7 @@ FFmpeg 管理器测试
 import os
 import sys
 import json
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
@@ -14,8 +15,27 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from core.ffmpeg_manager import (
     MediaInfo, get_media_info, check_ffmpeg_installed, check_ffprobe_installed,
-    _parse_time_str, convert_file, FFMPEG_PATH, FFPROBE_PATH,
+    _parse_time_str, convert_file, extract_audio, FFMPEG_PATH, FFPROBE_PATH,
 )
+
+
+def _generate_test_media(duration_sec: float = 1) -> str:
+    """
+    生成一个测试用音频文件（不依赖系统文件）。
+    返回文件路径，调用方负责删除。
+    """
+    if not check_ffmpeg_installed()[0]:
+        raise RuntimeError("ffmpeg not available")
+
+    fd, path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    subprocess.run(
+        [FFMPEG_PATH, "-y", "-f", "lavfi", "-i",
+         f"sine=frequency=440:duration={duration_sec}",
+         "-ar", "44100", path],
+        capture_output=True, timeout=30, check=True,
+    )
+    return path
 
 
 class TestMediaInfo(unittest.TestCase):
@@ -76,7 +96,6 @@ class TestCheckFFmpeg(unittest.TestCase):
     def test_check_installed(self):
         """测试 FFmpeg 检查可以运行"""
         ok, msg = check_ffmpeg_installed()
-        # 在 VPS 上可能安装也可能没安装，不做断言
         self.assertIsInstance(ok, bool)
         self.assertIsInstance(msg, str)
 
@@ -87,11 +106,12 @@ class TestCheckFFmpeg(unittest.TestCase):
 
 
 class TestFFprobeIntegration(unittest.TestCase):
-    """FFprobe 集成测试（仅在 ffprobe 可用时运行）"""
+    """FFprobe 集成测试（动态生成测试文件）"""
 
     @classmethod
     def setUpClass(cls):
         cls.ffprobe_ok, _ = check_ffprobe_installed()
+        cls.ffmpeg_ok, _ = check_ffmpeg_installed()
 
     def test_get_media_info_nonexistent(self):
         if not self.ffprobe_ok:
@@ -99,28 +119,22 @@ class TestFFprobeIntegration(unittest.TestCase):
         with self.assertRaises(Exception):
             get_media_info("/nonexistent/file.mp4")
 
-    def test_get_media_info_small_video(self):
-        """测试 ffprobe 能解析视频文件"""
-        if not self.ffprobe_ok:
-            self.skipTest("ffprobe not available")
+    def test_get_media_info_small_file(self):
+        """测试 ffprobe 能解析生成的音频文件"""
+        if not self.ffprobe_ok or not self.ffmpeg_ok:
+            self.skipTest("ffmpeg/ffprobe not available")
 
-        # 查找系统上的测试音频文件
-        test_videos = [
-            "/usr/share/sounds/alsa/Front_Center.wav",
-        ]
         test_file = None
-        for p in test_videos:
-            if os.path.isfile(p):
-                test_file = p
-                break
-
-        if not test_file:
-            self.skipTest("no test media file found on this system")
-
-        info = get_media_info(test_file)
-        self.assertIsInstance(info, MediaInfo)
-        self.assertEqual(info.file_path, test_file)
-        self.assertGreater(info.file_size, 0)
+        try:
+            test_file = _generate_test_media(0.5)
+            info = get_media_info(test_file)
+            self.assertIsInstance(info, MediaInfo)
+            self.assertEqual(info.file_path, test_file)
+            self.assertGreater(info.file_size, 0)
+            self.assertIn(info.format_name, ["wav", "pcm_s16le"])
+        finally:
+            if test_file and os.path.isfile(test_file):
+                os.unlink(test_file)
 
 
 class TestConvertFile(unittest.TestCase):
@@ -136,6 +150,28 @@ class TestConvertFile(unittest.TestCase):
             self.skipTest("ffmpeg not available")
         with self.assertRaises(Exception):
             convert_file("/nonexistent/file.mp4", "/tmp/out.mp4")
+
+    def test_extract_audio_from_generated(self):
+        """从生成的音频文件提取/转码为 MP3，验证输出文件存在且有内容"""
+        if not self.ffmpeg_ok or not self.ffprobe_ok:
+            self.skipTest("ffmpeg/ffprobe not available")
+
+        src = None
+        out_fd, out_path = tempfile.mkstemp(suffix=".mp3")
+        os.close(out_fd)
+        try:
+            src = _generate_test_media(0.5)
+            result = extract_audio(src, out_path)
+            self.assertIsInstance(result, str)
+            self.assertGreater(len(result), 0)
+            self.assertTrue(os.path.isfile(out_path))
+            self.assertGreater(os.path.getsize(out_path), 100,
+                               "Output MP3 should have content")
+        finally:
+            if src and os.path.isfile(src):
+                os.unlink(src)
+            if os.path.isfile(out_path):
+                os.unlink(out_path)
 
 
 if __name__ == "__main__":

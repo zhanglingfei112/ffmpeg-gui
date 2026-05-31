@@ -7,13 +7,14 @@ FFmpeg GUI 构建脚本 (PyInstaller)
 import os
 import sys
 import shutil
+import subprocess
 
 
 def build():
     """运行 PyInstaller 打包"""
     # 确保 PyInstaller 已安装
     try:
-        import PyInstaller
+        import PyInstaller  # noqa: F401
     except ImportError:
         print("请先安装 PyInstaller: pip install pyinstaller")
         sys.exit(1)
@@ -35,29 +36,27 @@ def build():
         "--clean",
         "--noconfirm",
         "--name", "FFmpegGUI",
-        "--windowed",  # 不显示控制台窗口
-        "--icon", "NONE",  # 默认可选: 指定图标路径
-        # 数据文件
+        "--windowed",
+        "--icon", "NONE",
         "--add-data", f"src{os.pathsep}src",
-        # 隐藏导入
         "--hidden-import", "PySide6.QtCore",
         "--hidden-import", "PySide6.QtWidgets",
         "--hidden-import", "PySide6.QtGui",
-        # 主脚本
         "src/main.py",
     ]
 
     cmd = " ".join(args)
     print(f"执行: {cmd}")
-    ret = os.system(cmd)
+    try:
+        ret = subprocess.run(cmd, shell=True, check=False)
+        ret.check_returncode()
+    except subprocess.CalledProcessError as e:
+        print(f"\n❌ 打包失败 (返回码 {e.returncode})")
+        sys.exit(e.returncode)
 
-    if ret == 0:
-        print("\n✅ 打包成功!")
-        print(f"📁 输出目录: {os.path.join(project_root, 'dist', 'FFmpegGUI')}")
-        print(f"📦 可执行文件: {os.path.join(project_root, 'dist', 'FFmpegGUI', 'FFmpegGUI.exe')}")
-    else:
-        print(f"\n❌ 打包失败 (返回码 {ret})")
-        sys.exit(ret)
+    print("\n✅ 打包成功!")
+    print(f"📁 输出目录: {os.path.join(project_root, 'dist', 'FFmpegGUI')}")
+    print(f"📦 可执行文件: {os.path.join(project_root, 'dist', 'FFmpegGUI', 'FFmpegGUI.exe')}")
 
 
 if __name__ == "__main__":

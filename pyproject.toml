@@ -1,6 +1,6 @@
 [project]
 name = "ffmpeg-gui"
-version = "0.1.0"
+version = "0.2.0"
 description = "FFmpeg GUI Client - 基于 FFmpeg 的本地视频处理桌面工具"
 authors = [{ name = "LFZ" }]
 license = { text = "MIT" }

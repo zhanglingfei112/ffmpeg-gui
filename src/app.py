@@ -17,7 +17,7 @@ from src.ui.install_dialog import check_and_install_ffmpeg
 
 _APP_NAME = "FFmpeg GUI"
 _ORG_NAME = "LFZ"
-_APP_VERSION = "0.1.0"
+_APP_VERSION = "0.2.0"
 
 
 class App(QApplication):
